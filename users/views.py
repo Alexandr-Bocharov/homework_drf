@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework import generics
 
 from users.permissions import IsOwner, IsIam
-from users.serializers import (UserSerializer, PaymentSerializer, UserRetrieveSerializer)
+from users.serializers import UserSerializer, PaymentSerializer, UserRetrieveSerializer
 from users.models import User, Payment
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
