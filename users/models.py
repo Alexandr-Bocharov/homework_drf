@@ -30,9 +30,9 @@ class Payment(models.Model):
         TRANSFER_TO_ACCOUNT = "transfer_to_account", "перевод на счет"
 
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, verbose_name="пользователь"
+        User, on_delete=models.CASCADE, verbose_name="пользователь", **NULLABLE
     )
-    payment_date = models.DateField(verbose_name="дата оплаты")
+    payment_date = models.DateField(verbose_name="дата оплаты", **NULLABLE)
     paid_course = models.ForeignKey(
         Course, verbose_name="Оплаченный курс", on_delete=models.SET_NULL, **NULLABLE
     )
@@ -43,6 +43,13 @@ class Payment(models.Model):
     payment_method = models.CharField(
         max_length=20, verbose_name="способ оплаты", choices=PaymentMethod.choices
     )
+    link = models.URLField(
+        max_length=400,
+        verbose_name='ссылка на оплату',
+        **NULLABLE
+    )
+    session_id = models.CharField(max_length=250, **NULLABLE, verbose_name='id сессии')
+    payment_status = models.CharField(max_length=50, verbose_name='статус платежа', default='unpaid')
 
     def __str__(self):
         return f"{self.paid_course if self.paid_course else self.paid_lesson} - оплачен"

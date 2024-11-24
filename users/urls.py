@@ -13,6 +13,7 @@ from users.views import (
     UserRetrieveAPIView,
     PaymentListAPIView,
     PaymentCreateAPIView,
+PaymentRetrieveAPIView,
 )
 
 app_name = UsersConfig.name
@@ -25,6 +26,7 @@ urlpatterns = [
     path("<int:pk>/", UserRetrieveAPIView.as_view(), name="user_view"),
     path("payments/", PaymentListAPIView.as_view(), name="payment_list"),
     path("payments/create/", PaymentCreateAPIView.as_view(), name="payment_create"),
+    path("payments/<int:pk>/", PaymentRetrieveAPIView.as_view(), name="payment_detail"),
     path(
         "login/",
         TokenObtainPairView.as_view(permission_classes=(AllowAny,)),

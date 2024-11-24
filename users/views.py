@@ -1,3 +1,6 @@
+from datetime import datetime
+from rest_framework.response import Response
+
 from django.shortcuts import render
 from rest_framework import generics
 
@@ -7,6 +10,7 @@ from users.models import User, Payment
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from users.services import create_stripe_price, create_stripe_session, create_product, retrieve_stripe_session
 
 
 class UserUpdateAPIView(generics.UpdateAPIView):
@@ -50,3 +54,37 @@ class PaymentListAPIView(generics.ListAPIView):
 
 class PaymentCreateAPIView(generics.CreateAPIView):
     serializer_class = PaymentSerializer
+    queryset = Payment.objects.all()
+
+    def perform_create(self, serializer):
+        payment = serializer.save(user=self.request.user)
+
+        if payment.payment_method == "transfer_to_account":
+            payment.payment_date = datetime.now().date()
+
+            product = create_product(payment.paid_course.id)
+            price = create_stripe_price(payment.payment_amount, product.name)
+            session = create_stripe_session(price.get('id'))
+
+            session_id, session_link = session
+            payment.session_id = session_id
+            payment.link = session_link
+
+            payment.save()
+
+
+# доп. задание
+class PaymentRetrieveAPIView(generics.RetrieveAPIView):
+    serializer_class = PaymentSerializer
+    queryset = Payment.objects.all()
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        # print(retrieve_stripe_session(instance.session_id).payment_status)
+        instance.payment_status = retrieve_stripe_session(instance.session_id).payment_status
+        instance.save()
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
