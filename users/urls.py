@@ -15,6 +15,7 @@ from users.views import (
     PaymentCreateAPIView,
 PaymentRetrieveAPIView,
 )
+from users.views import CustomTokenObtainPairView
 
 app_name = UsersConfig.name
 
@@ -29,7 +30,7 @@ urlpatterns = [
     path("payments/<int:pk>/", PaymentRetrieveAPIView.as_view(), name="payment_detail"),
     path(
         "login/",
-        TokenObtainPairView.as_view(permission_classes=(AllowAny,)),
+        CustomTokenObtainPairView.as_view(permission_classes=(AllowAny,)),
         name="login",
     ),
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

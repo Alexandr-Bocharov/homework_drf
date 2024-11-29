@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from materials.models import Course, Lesson
+from django.utils import timezone
 from utils import NULLABLE
 from datetime import datetime
 
@@ -15,6 +16,7 @@ class User(AbstractUser):
     avatar = models.ImageField(
         upload_to="users/avatars/", verbose_name="аватар", **NULLABLE
     )
+    last_login = models.DateField(verbose_name="последний вход в систему", default=timezone.now().date())
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []

@@ -11,8 +11,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.generics import GenericAPIView
 from materials.paginators import CustomPaginator
+from materials.tasks import send_message_about_update
 
 from users.permissions import IsModer, IsOwner
+from django.utils import timezone
+from datetime import timedelta
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -35,6 +38,16 @@ class CourseViewSet(viewsets.ModelViewSet):
         serializer.validated_data["owner"] = self.request.user
         serializer.save()
 
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)  # Проверяет, является ли запрос PATCH
+        instance = self.get_object()  # Получает объект для обновления
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        course_name = instance.name
+        send_message_about_update.delay(course_name)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
 
 class LessonListAPIView(generics.ListAPIView):
     serializer_class = LessonSerializer
@@ -49,7 +62,16 @@ class LessonCreateAPIView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         serializer.validated_data["owner"] = self.request.user
-        serializer.save()
+        created_object = serializer.save()
+        dt_now = timezone.now()
+        print((dt_now - serializer.validated_data['course'].updated_at) >= timedelta(hours=4))
+        # если у урока указан курс, тогда осуществляем рассылку тем, кто на нее подписан
+        if serializer.validated_data['course'] and (
+                dt_now - serializer.validated_data['course'].updated_at) >= timedelta(hours=4):
+            course_id, lesson_id = serializer.validated_data['course'].pk, created_object.pk
+            send_message_about_update.delay(course_id, lesson_id)
+            serializer.validated_data['course'].updated_at = dt_now
+            serializer.validated_data['course'].save()
 
 
 class LessonRetrieveAPIView(generics.RetrieveAPIView):
@@ -62,6 +84,22 @@ class LessonUpdateAPIView(generics.UpdateAPIView):
     serializer_class = LessonSerializer
     queryset = Lesson.objects.all()
     permission_classes = (IsAuthenticated, IsOwner | IsModer)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)  # Проверяет, является ли запрос PATCH
+        instance = self.get_object()  # Получает объект для обновления
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        dt_now = timezone.now()
+        # если у урока указан курс, тогда осуществляем рассылку тем, кто на нее подписан
+        if instance.course and (dt_now - instance.course.updated_at) >= timedelta(hours=4):
+            course_id, lesson_id = instance.course.pk, instance.id
+            send_message_about_update.delay(course_id, instance.id)
+            instance.course.updated_at = dt_now
+            instance.course.save()
+
+        self.perform_update(serializer)
+        return Response(serializer.data)
 
 
 class LessonDestroyAPIView(generics.DestroyAPIView):
